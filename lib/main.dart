@@ -27,10 +27,11 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MyHomePage> createState() => MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+// クラス名: 先頭に「_」がついてるとprivateになる
+class MyHomePageState extends State<MyHomePage> {
   //StatefulWidgetは一つのclassで、状態、ロジック、UIを定義できる
   //子供のclassにロジック、状態を渡していける。 (Reactのpropみたいな感じ)
   //子供はStateLessWidget
@@ -38,12 +39,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
   //State classで状態を定義
   //状態
-  int _counter = 0;
+  int counter = 0;
 
   //ロジック
-  void _incrementCounter() {
+  void incrementCounter() {
     setState(() {
-      _counter++;
+      counter++;
     });
   }
 
@@ -51,22 +52,59 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     print('MyHomePageStateをビルド');
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            // constで定義することで、再描画しなくて良いことを指定する
-            const WidgetA(),
-            WidgetB(_counter),
-            WidgetC(_incrementCounter),
-          ],
+    return MyHomePageInheritedWidget(
+      data: this,
+      counter: counter,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.title),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const <Widget>[
+              // constで定義することで、再描画しなくて良いことを指定する
+              WidgetA(),
+              WidgetB(),
+              WidgetC(),
+            ],
+          ),
         ),
       ),
     );
+  }
+}
+
+class MyHomePageInheritedWidget extends InheritedWidget {
+  const MyHomePageInheritedWidget(
+      {Key? key,
+      required Widget child,
+      required this.data,
+      required this.counter})
+      : super(key: key, child: child);
+
+  final MyHomePageState data;
+  final int counter;
+
+  //MyHomePageStateとupdateShouldNotifyはInheritedWidgetを定義する上での決まり文句
+
+  static MyHomePageState of(BuildContext context, {bool listen = true}) {
+    if (listen) {
+      return (context
+              .dependOnInheritedWidgetOfExactType<MyHomePageInheritedWidget>())!
+          .data;
+    } else {
+      return (context
+              .getElementForInheritedWidgetOfExactType<
+                  MyHomePageInheritedWidget>()!
+              .widget as MyHomePageInheritedWidget)
+          .data;
+    }
+  }
+
+  @override
+  bool updateShouldNotify(MyHomePageInheritedWidget oldWidget) {
+    return counter != oldWidget.counter;
   }
 }
 
@@ -85,30 +123,32 @@ class WidgetA extends StatelessWidget {
 class WidgetB extends StatelessWidget {
   // 親のWidgetから値を渡せるように
   //constructorに定義
-  const WidgetB(this.counter, {Key? key}) : super(key: key);
+  const WidgetB({Key? key}) : super(key: key);
   // 渡される値を定義
-  final int counter;
 
   @override
   Widget build(BuildContext context) {
     print('WidgetBをビルド');
+    //InheritedWidgetで状態を取得する方法
+    final MyHomePageState state = MyHomePageInheritedWidget.of(context);
     return Text(
-      '$counter',
+      '${state.counter}',
       style: Theme.of(context).textTheme.headline4,
     );
   }
 }
 
 class WidgetC extends StatelessWidget {
-  const WidgetC(this.increment, {Key? key}) : super(key: key);
-  final Function increment;
+  const WidgetC({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     print('WidgetCをビルド');
+    final MyHomePageState state =
+        MyHomePageInheritedWidget.of(context, listen: false);
     return ElevatedButton(
       onPressed: () {
-        increment();
+        state.incrementCounter();
       },
       child: const Text('カウント'),
     );
