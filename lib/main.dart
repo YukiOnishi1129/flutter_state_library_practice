@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 void main() {
@@ -39,74 +41,100 @@ class MyHomePageState extends State<MyHomePage> {
 
   //State classで状態を定義
   //状態
-  int counter = 0;
+  // int counter = 0;
+  //
+  // //ロジック
+  // void incrementCounter() {
+  //   setState(() {
+  //     counter++;
+  //   });
+  // }
 
-  //ロジック
-  void incrementCounter() {
-    setState(() {
-      counter++;
-    });
+  // BLoCパターン: stateとロジックを別の処理で管理する
+  late MyHomePageLogic myHomePageLogic;
+
+  @override
+  void initState() {
+    super.initState();
+    myHomePageLogic = MyHomePageLogic();
   }
 
   //見た目 (UI)
   @override
   Widget build(BuildContext context) {
     print('MyHomePageStateをビルド');
-    return MyHomePageInheritedWidget(
-      data: this,
-      counter: counter,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: const <Widget>[
-              // constで定義することで、再描画しなくて良いことを指定する
-              WidgetA(),
-              WidgetB(),
-              WidgetC(),
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            // constで定義することで、再描画しなくて良いことを指定する
+            const WidgetA(),
+            WidgetB(myHomePageLogic),
+            WidgetC(myHomePageLogic),
+          ],
         ),
       ),
     );
   }
 }
 
-class MyHomePageInheritedWidget extends InheritedWidget {
-  const MyHomePageInheritedWidget(
-      {Key? key,
-      required Widget child,
-      required this.data,
-      required this.counter})
-      : super(key: key, child: child);
-
-  final MyHomePageState data;
-  final int counter;
-
-  //MyHomePageStateとupdateShouldNotifyはInheritedWidgetを定義する上での決まり文句
-
-  static MyHomePageState of(BuildContext context, {bool listen = true}) {
-    if (listen) {
-      return (context
-              .dependOnInheritedWidgetOfExactType<MyHomePageInheritedWidget>())!
-          .data;
-    } else {
-      return (context
-              .getElementForInheritedWidgetOfExactType<
-                  MyHomePageInheritedWidget>()!
-              .widget as MyHomePageInheritedWidget)
-          .data;
-    }
+// BLoCパターン
+class MyHomePageLogic {
+  MyHomePageLogic() {
+    _counterController.sink.add(_counter);
   }
 
-  @override
-  bool updateShouldNotify(MyHomePageInheritedWidget oldWidget) {
-    return counter != oldWidget.counter;
+  final StreamController<int> _counterController = StreamController();
+  int _counter = 0;
+
+  Stream<int> get count => _counterController.stream;
+
+  void increment() {
+    _counter++;
+    _counterController.sink.add(_counter);
+  }
+
+  void dispose() {
+    _counterController.close();
   }
 }
+
+// class MyHomePageInheritedWidget extends InheritedWidget {
+//   const MyHomePageInheritedWidget(
+//       {Key? key,
+//       required Widget child,
+//       required this.data,
+//       required this.counter})
+//       : super(key: key, child: child);
+//
+//   final MyHomePageState data;
+//   final int counter;
+//
+//   //MyHomePageStateとupdateShouldNotifyはInheritedWidgetを定義する上での決まり文句
+//
+//   static MyHomePageState of(BuildContext context, {bool listen = true}) {
+//     if (listen) {
+//       return (context
+//               .dependOnInheritedWidgetOfExactType<MyHomePageInheritedWidget>())!
+//           .data;
+//     } else {
+//       return (context
+//               .getElementForInheritedWidgetOfExactType<
+//                   MyHomePageInheritedWidget>()!
+//               .widget as MyHomePageInheritedWidget)
+//           .data;
+//     }
+//   }
+//
+//   @override
+//   bool updateShouldNotify(MyHomePageInheritedWidget oldWidget) {
+//     return counter != oldWidget.counter;
+//   }
+// }
 
 class WidgetA extends StatelessWidget {
   const WidgetA({Key? key}) : super(key: key);
@@ -123,32 +151,40 @@ class WidgetA extends StatelessWidget {
 class WidgetB extends StatelessWidget {
   // 親のWidgetから値を渡せるように
   //constructorに定義
-  const WidgetB({Key? key}) : super(key: key);
+  const WidgetB(this.myHomePageLogic, {Key? key}) : super(key: key);
   // 渡される値を定義
+
+  final MyHomePageLogic myHomePageLogic;
 
   @override
   Widget build(BuildContext context) {
-    print('WidgetBをビルド');
     //InheritedWidgetで状態を取得する方法
-    final MyHomePageState state = MyHomePageInheritedWidget.of(context);
-    return Text(
-      '${state.counter}',
-      style: Theme.of(context).textTheme.headline4,
-    );
+    // final MyHomePageState state = MyHomePageInheritedWidget.of(context);
+    return StreamBuilder<int>(
+        stream: myHomePageLogic.count,
+        builder: (context, snapshot) {
+          print('WidgetBをビルド');
+          return Text(
+            '${snapshot.data}',
+            style: Theme.of(context).textTheme.headline4,
+          );
+        });
   }
 }
 
 class WidgetC extends StatelessWidget {
-  const WidgetC({Key? key}) : super(key: key);
+  const WidgetC(this.myHomePageLogic, {Key? key}) : super(key: key);
+
+  final MyHomePageLogic myHomePageLogic;
 
   @override
   Widget build(BuildContext context) {
     print('WidgetCをビルド');
-    final MyHomePageState state =
-        MyHomePageInheritedWidget.of(context, listen: false);
+    // final MyHomePageState state =
+    //     MyHomePageInheritedWidget.of(context, listen: false);
     return ElevatedButton(
       onPressed: () {
-        state.incrementCounter();
+        myHomePageLogic.increment();
       },
       child: const Text('カウント'),
     );
