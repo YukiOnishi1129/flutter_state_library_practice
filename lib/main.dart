@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_state_library_practice/screen/my_home_page.dart';
+import 'package:flutter_state_library_practice/state/my_home_state.dart';
+import 'package:flutter_state_library_practice/view_model/my_home_view_model.dart';
 
 void main() {
   runApp(const MyApp());
@@ -19,6 +22,13 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
+//riverpod
+//providerをグローバルな変数として定義する
+//いろんなViewクラスからでも状態やロジックにアクセスできる
+final myHomePageProvider =
+    StateNotifierProvider<MyHomePageStateNotifier, MyHomePageState>(
+        (ref) => MyHomePageStateNotifier());
 
 // class MyHomePageState extends ChangeNotifier {
 //   int counter = 0;
